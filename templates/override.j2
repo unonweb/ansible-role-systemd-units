@@ -1,0 +1,15 @@
+# Ansible managed drop-in override: Do not edit manually
+
+{% for section, directives in item.overrides.items() %}
+[{{ section }}]
+{% for key, value in directives.items() %}
+{% if value is iterable and value is not string %}
+{% for v in value %}
+{{ key }}={{ v }}
+{% endfor %}
+{% else %}
+{{ key }}={{ value }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}

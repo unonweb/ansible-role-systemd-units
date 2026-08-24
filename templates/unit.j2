@@ -1,0 +1,15 @@
+# Ansible managed: Do not edit manually
+
+{% for section, directives in item.config.items() %}
+[{{ section }}]
+{% for key, value in directives.items() %}
+{% if value is iterable and value is not string %}
+{% for v in value %}
+{{ key }}={{ v }}
+{% endfor %}
+{% else %}
+{{ key }}={{ value }}
+{% endif %}
+{% endfor %}
+
+{% endfor %}

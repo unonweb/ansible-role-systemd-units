@@ -1,0 +1,12 @@
+---
+- name: systemd-units role
+  tags: [systemd-units]
+  block:
+
+# loop
+- name: Process systemd unit configurations
+  ansible.builtin.include_tasks: unit.yml
+  loop: "{{ systemd_units }}"
+  loop_control:
+    loop_var: item
+    label: "{{ unit_item.name }}"
