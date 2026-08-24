@@ -1,46 +1,51 @@
 ---
-# template unit
-- name: Template base unit file
-  when: item.config is defined
-  ansible.builtin.template:
-    src: unit.j2
-    dest: "/etc/systemd/system/{{ item.name }}.{{ item.type | default('service') }}"
-    owner: root
-    group: root
-    mode: '0644'
-  register: __systemd_unit_file
+- vars:
+    __systemd_units_item_name: "{{ item.name | splitext | first }}"
+    __systemd_units_item_path: "/etc/systemd/system/{{ __systemd_units_item_name }}.{{ item.type | default('service') }}"
+  block:
 
-# mkdir
-- name: Mkdir overrides /etc/systemd/system/{{ item.name }}.{{ item.type | default('service') }}.d
-  when: item.overrides is defined
-  ansible.builtin.file:
-    path: "/etc/systemd/system/{{ item.name }}.{{ item.type | default('service') }}.d"
-    state: directory
-    owner: root
-    group: root
-    mode: '0755'
+  # template unit
+  - name: Template unit file {{ __systemd_units_item_path }}
+    when: item.config is defined
+    ansible.builtin.template:
+      src: unit.j2
+      dest: "{{ __systemd_units_item_path }}"
+      owner: root
+      group: root
+      mode: '0644'
+    register: __systemd_unit_file
 
-# template override
-- name: Create override /etc/systemd/system/{{ item.name }}.{{ item.type | default('service') }}.d/override.conf
-  ansible.builtin.template:
-    src: override.conf.j2
-    dest: "/etc/systemd/system/{{ item.name }}.{{ item.type | default('service') }}.d/override.conf"
-    owner: root
-    group: root
-    mode: '0644'
-  when: item.overrides is defined
-  register: __systemd_unit_override
+  # mkdir
+  - name: Mkdir overrides {{ __systemd_units_item_path }}.d # splitext | first removes file extension
+    when: item.overrides is defined
+    ansible.builtin.file:
+      path: "{{ __systemd_units_item_path }}.d"
+      state: directory
+      owner: root
+      group: root
+      mode: '0755'
 
-# systemctl daemon-reload
-- name: Reload systemd daemon if units changed
-  ansible.builtin.systemd_service:
-    daemon_reload: true
-  when: (__systemd_unit_file is defined and __systemd_unit_file is changed) or (__systemd_unit_override is defined and __systemd_unit_override is changed)
+  # template override
+  - name: Template override {{ __systemd_units_item_path }}.d/override.conf
+    ansible.builtin.template:
+      src: override.j2
+      dest: "{{ __systemd_units_item_path }}.d/override.conf"
+      owner: root
+      group: root
+      mode: '0644'
+    when: item.overrides is defined
+    register: __systemd_unit_override
 
-# unit state
-- name: Manage systemd unit state
-  when: (item.state is defined) or (item.enabled is defined)
-  ansible.builtin.systemd_service:
-    name: "{{ item.name }}.{{ item.type | default('service') }}"
-    state: "{{ item.state | default('started') }}"
-    enabled: "{{ item.enabled | default(true) }}"
+  # systemctl daemon-reload
+  - name: Reload systemd daemon if units changed
+    ansible.builtin.systemd_service:
+      daemon_reload: true
+    when: (__systemd_unit_file is defined and __systemd_unit_file is changed) or (__systemd_unit_override is defined and __systemd_unit_override is changed)
+
+  # unit state
+  - name: Manage state of {{ __systemd_units_item_name }}
+    when: (item.state is defined) or (item.enabled is defined)
+    ansible.builtin.systemd_service:
+      name: "{{ __systemd_units_item_name }}.{{ item.type | default('service') }}"
+      state: "{{ item.state | default('started') }}"
+      enabled: "{{ item.enabled | default(true) }}"
