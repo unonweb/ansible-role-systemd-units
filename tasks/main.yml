@@ -5,7 +5,7 @@
 
   # loop
   - name: Process systemd unit configurations
-    ansible.builtin.include_tasks: unit.yml
+    ansible.builtin.include_tasks: systemd-unit.yml
     loop: "{{ systemd_units }}"
     loop_control:
       loop_var: item
